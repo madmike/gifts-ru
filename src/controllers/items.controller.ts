@@ -1,6 +1,6 @@
 import { Controller, Get, Logger, Param, Query } from "@nestjs/common";
-import { Category } from "src/models/category.model";
-import { Item } from "src/models/item.model";
+import { Category } from "../models/category.model";
+import { Item } from "../models/item.model";
 
 
 @Controller()

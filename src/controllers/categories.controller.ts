@@ -1,5 +1,5 @@
 import { Controller, Get, Param } from "@nestjs/common";
-import { Category } from "src/models/category.model";
+import { Category } from "../models/category.model";
 
 @Controller()
 export class CategoriesController {
