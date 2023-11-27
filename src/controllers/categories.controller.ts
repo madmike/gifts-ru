@@ -11,12 +11,13 @@ export class CategoriesController {
   }
 
   @Get('categories/:id')
-  getCategory(@Param('id') id: string) {
+  async getCategory(@Param('id') id: string) {
     const param = /^[a-f\d]{24}$/i.test(id) ? '_id' : 'slug';
-    return Category.findOne({[param]: id});
+    const category = await Category.findOne({[param]: id});
+    return this.createTree(category._id);
   }
 
-  private async createTree() {
+  private async createTree(id: any = null) {
     const categories = await Category.find();
 
     const tree = {};
@@ -31,12 +32,16 @@ export class CategoriesController {
       }
     }
 
+    if (id) {
+      return tree[id];
+    } 
+
     for (let cat in tree) {
       if (tree[cat].parent) {
         delete tree[cat];
       }
     }
 
-    return tree;
+    return Object.values(tree);
   }
 }
