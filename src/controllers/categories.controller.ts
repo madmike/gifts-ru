@@ -17,8 +17,6 @@ export class CategoriesController {
     return this.createTree(category._id);
   }
 
-
-
   private async createTree(id: any = null) {
     //@ts-expect-error
     const tree = await Category.generateTreeMap();
