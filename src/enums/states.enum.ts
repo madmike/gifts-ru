@@ -1,4 +1,4 @@
-export enum STATE {
+export enum SaxState {
   TEXT = 0,
   TAG_NAME = 1,
   INSTRUCTION = 2,

@@ -1,4 +1,4 @@
-export enum TAGS {
+export enum SaxTag {
   NONE = 0,
   OPENING = 1,
   CLOSING = 2,

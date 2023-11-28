@@ -4,7 +4,7 @@ import { Document, PaginateModel, Schema, model } from "mongoose";
 
 export const PackSchema = new Schema({
   amount: Number,
-  minamount: Number,
+  minAmount: Number,
   weight: Number,
   volume: Number,
   size: {
@@ -28,6 +28,15 @@ export const PhotoSchema = new Schema({
   path: String,
 });
 
+export const StockSchema = new Schema({
+  total: Number,
+  available: Number,
+  inTransit: Number,
+  inTransitAvailable: Number,
+  dealerPrice: Number,
+  endUserPrice: Number,
+});
+
 export const ItemSchema = new Schema({
   pid: { type: Number, unique: true },
   gid: { type: Number, index: true },
@@ -41,6 +50,7 @@ export const ItemSchema = new Schema({
   matherial: String,
   content: String,
   status: Number,
+  stocks: StockSchema,
   price: PriceSchema,
   pack: PackSchema,
   prints: [PrintSchema],

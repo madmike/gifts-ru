@@ -31,9 +31,8 @@ export class ScheduleService implements OnModuleInit {
 
     this.active = true;
     await this.download.getCategories();
-    await setTimeout(10000);
     await this.download.getProducts();
-    await setTimeout(10000);
+    await this.download.getStocks();
     await this.download.getPhotos();
     this.active = false;
   }

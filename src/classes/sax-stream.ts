@@ -1,13 +1,14 @@
-import { EVENTS } from "src/enums/events.enum";
-import { STATE } from "src/enums/states.enum";
-import { TAGS } from "src/enums/tags.enum";
 import { Writable } from "stream";
 
+import { SaxEvents } from "../enums/events.enum";
+import { SaxState } from "../enums/states.enum";
+import { SaxTag } from "../enums/tags.enum";
+
 export class SaxStream extends Writable {
-  private state = STATE.TEXT;
+  private state = SaxState.TEXT;
   private buffer = "";
   private pos = 0;
-  private tagType = TAGS.NONE;
+  private tagType = SaxTag.NONE;
 
   _write(chunk, encoding, done) {
     chunk = typeof chunk !== "string" ? chunk.toString() : chunk;
@@ -19,11 +20,11 @@ export class SaxStream extends Writable {
       this.pos++;
 
       switch (this.state) {
-        case STATE.TEXT:
+        case SaxState.TEXT:
           if (c === "<") this.onStartNewTag();
           break;
 
-        case STATE.TAG_NAME:
+        case SaxState.TAG_NAME:
           if (prev === "<" && c === "?") {
             this.onStartInstruction();
           }
@@ -48,25 +49,25 @@ export class SaxStream extends Writable {
 
           if (c === ">") {
             if (prev === "/") {
-              this.tagType = TAGS.SELF_CLOSING;
+              this.tagType = SaxTag.SELF_CLOSING;
             }
             this.onTagCompleted();
           }
           break;
 
-        case STATE.INSTRUCTION:
+        case SaxState.INSTRUCTION:
           if (prev === "?" && c === ">") {
             this.onEndInstruction();
           }
           break;
 
-        case STATE.CDATA:
+        case SaxState.CDATA:
           if (this.buffer[this.pos - 3] === "]" && prev === "]" && c === ">") {
             this.onCDATAEnd();
           }
           break;
 
-        case STATE.IGNORE_COMMENT:
+        case SaxState.IGNORE_COMMENT:
           if (this.buffer[this.pos - 3] === "-" &&
             prev === "-" &&
             c === ">"
@@ -89,10 +90,10 @@ export class SaxStream extends Writable {
   private onStartNewTag() {
     let text = this.endRecording().trim();
     if (text) {
-      this.emit(EVENTS.TEXT, text);
+      this.emit(SaxEvents.TEXT, text);
     }
-    this.state = STATE.TAG_NAME;
-    this.tagType = TAGS.OPENING;
+    this.state = SaxState.TAG_NAME;
+    this.tagType = SaxTag.OPENING;
   }
   
   private onTagCompleted() {
@@ -104,41 +105,41 @@ export class SaxStream extends Writable {
 
     if (name === null) {
       this.emit(
-        EVENTS.ERROR,
+        SaxEvents.ERROR,
         new Error("Failed to parse name for tag" + tag)
       );
     }
 
-    if (this.tagType && this.tagType == TAGS.OPENING) {
-      this.emit(EVENTS.OPEN_TAG, name, attributes);
+    if (this.tagType && this.tagType == SaxTag.OPENING) {
+      this.emit(SaxEvents.OPEN_TAG, name, attributes);
     }
 
-    if (this.tagType && this.tagType === TAGS.CLOSING) {
-      this.emit(EVENTS.CLOSE_TAG, name, attributes);
+    if (this.tagType && this.tagType === SaxTag.CLOSING) {
+      this.emit(SaxEvents.CLOSE_TAG, name, attributes);
     }
-    if (this.tagType && this.tagType === TAGS.SELF_CLOSING) {
+    if (this.tagType && this.tagType === SaxTag.SELF_CLOSING) {
       if (
         Object.keys(attributes).length === 0 &&
         attributes.constructor === Object
       ) {
         //attributes = { ___selfClosing___: true };
       }
-      this.emit(EVENTS.OPEN_TAG, name, attributes);
-      this.emit(EVENTS.CLOSE_TAG, name, attributes);
+      this.emit(SaxEvents.OPEN_TAG, name, attributes);
+      this.emit(SaxEvents.CLOSE_TAG, name, attributes);
     }
 
-    this.state = STATE.TEXT;
-    this.tagType = TAGS.NONE;
+    this.state = SaxState.TEXT;
+    this.tagType = SaxTag.NONE;
   }
   
   private onCloseTagStart() {
     this.endRecording();
-    this.tagType = TAGS.CLOSING;
+    this.tagType = SaxTag.CLOSING;
   }
 
   private onStartInstruction() {
     this.endRecording();
-    this.state = STATE.INSTRUCTION;
+    this.state = SaxState.INSTRUCTION;
   }
 
   private onEndInstruction() {
@@ -151,35 +152,35 @@ export class SaxStream extends Writable {
 
     if (name === null) {
       this.emit(
-        EVENTS.ERROR,
+        SaxEvents.ERROR,
         new Error("Failed to parse name for inst" + inst)
       );
     }
 
-    this.emit(EVENTS.INSTRUCTION, name, attributes);
-    this.state = STATE.TEXT;
+    this.emit(SaxEvents.INSTRUCTION, name, attributes);
+    this.state = SaxState.TEXT;
   }
   
   private onCDATAStart() {
     this.endRecording();
-    this.state = STATE.CDATA;
+    this.state = SaxState.CDATA;
   }
   
   private onCDATAEnd() {
     let text = this.endRecording(); // Will return CDATA[XXX] we regexp out the actual text in the CDATA.
     text = text.slice(text.indexOf("[") + 1, text.lastIndexOf("]>") - 1);
-    this.state = STATE.TEXT;
+    this.state = SaxState.TEXT;
 
-    this.emit(EVENTS.CDATA, text);
+    this.emit(SaxEvents.CDATA, text);
   }
   
   private onCommentStart() {
-    this.state = STATE.IGNORE_COMMENT;
+    this.state = SaxState.IGNORE_COMMENT;
   }
 
   private onCommentEnd() {
     this.endRecording();
-    this.state = STATE.TEXT;
+    this.state = SaxState.TEXT;
   }
 
   private parseTagString(str) {

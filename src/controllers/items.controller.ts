@@ -18,10 +18,11 @@ export class ItemsController {
   async getItemsForCategory(@Param('cat_id') cat_id: string, @Query() q) {
     const param = /^[a-f\d]{24}$/i.test(cat_id) ? '_id' : 'slug';
     const cat = await Category.findOne({ [param]: cat_id });
-
+    const catIds = await cat.getDescedants();
     const { where, options } = this.getQuery(q);
+    console.log(catIds)
     if (cat) {
-      where.category = cat.id;
+      where.category = {$in: catIds };
     }
 
     return Item.paginate(where, options);

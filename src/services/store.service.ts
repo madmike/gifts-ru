@@ -22,14 +22,35 @@ export class StoreService {
     private readonly mapper: MapperService,
   ) {}
 
-  async addItem(data: any) {
-    await this.mutex.runExclusive(async () => {
+  async addItem(data: any = null) {
+    return this.mutex.runExclusive(() => {
       if (data) {
         const item = this.mapper.transform(data);
         this.items.push({
           updateOne: {
             filter: { pid: item.pid },
             update: { $set: item },
+            upsert: true,
+          }
+        });
+      }
+
+      if (!data || this.items.length === RING_SIZE) {
+        return this.storeItems();
+      } else {
+        return Promise.resolve();
+      }
+    });
+  }
+
+  async addItemStocks(data: any) {
+    await this.mutex.runExclusive(async () => {
+      if (data) {
+        const item = this.mapper.transformStocks(data);
+        this.items.push({
+          updateOne: {
+            filter: { pid: item.pid },
+            update: { $set: { stocks: item.stocks } },
             upsert: true,
           }
         });
@@ -83,13 +104,15 @@ export class StoreService {
 
       if (cat.page_id in this.itemCateogries) {
         try{
-        await Item.collection.bulkWrite(this.itemCateogries[cat.page_id].map( it => ({
-          updateOne: {
-            filter: { pid: parseInt(it) },
-            update: { $set: { pid: parseInt(it), category: category._id } },
-            upsert: true
-          }
-        }))).then( () => delete this.itemCateogries[cat.id] );
+          await this.mutex.runExclusive(async () => {
+            return Item.collection.bulkWrite([...this.itemCateogries[cat.page_id]].map( it => ({
+              updateOne: {
+                filter: { pid: parseInt(it) },
+                update: { $set: { pid: parseInt(it), category: category._id } },
+                upsert: true
+              }
+            }))).then( () => delete this.itemCateogries[cat.id] );
+          });
         } catch(error) {
           this.logger.error('ERROR HERE', error)
         }
@@ -98,11 +121,13 @@ export class StoreService {
   }
 
   async setItemCategory(item: any) {
-    this.itemCateogries[item.cid] ||= [];
-    this.itemCateogries[item.cid].push(item.pid);
+    this.itemCateogries[item.cid] ||= new Set();
+    this.itemCateogries[item.cid].add(item.pid);
   }
 
-  async storeItems() {
+  // --------------------------
+
+  private async storeItems() {
     if (!this.items.length) {
       return Promise.resolve();
     }

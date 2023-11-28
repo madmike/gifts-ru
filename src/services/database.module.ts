@@ -1,5 +1,5 @@
-import mongoose from 'mongoose';
-import { Module } from '@nestjs/common';
+import mongoose from "mongoose";
+import { Module } from "@nestjs/common";
 
 const databaseProviders = [
   {

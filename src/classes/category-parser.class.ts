@@ -1,6 +1,4 @@
-import { inspect } from "util";
 import { SaxStream } from "./sax-stream";
-import { EVENTS } from "src/enums/events.enum";
 import { ProductEvents } from "src/enums/product-events.enum";
 
 export class CategoryParser extends SaxStream {

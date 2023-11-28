@@ -1,4 +1,4 @@
-export enum EVENTS {
+export enum SaxEvents {
   ERROR = "error",
   TEXT = 'text',
   INSTRUCTION = 'instruction',

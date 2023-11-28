@@ -1,3 +1,4 @@
+import { ProductEvents } from "src/enums/product-events.enum";
 import { SaxStream } from "./sax-stream";
 
 export class ProductParser extends SaxStream {
@@ -28,9 +29,6 @@ export class ProductParser extends SaxStream {
 
       if (attrs) {
         for (let i of Object.entries(attrs)) {
-          if (i[0].substring(0,3) === '___') {
-            continue;
-          }
           cur[`$${i[0]}`] = i[1];
         }
       }
@@ -41,9 +39,9 @@ export class ProductParser extends SaxStream {
       let str = data.trim();
 
       if (str) {
-        if (/^[\d.]+$/.test(str)) {
-          str = parseFloat(str);
-        }
+        // if (/^[\d.]+$/.test(str)) {
+        //   str = parseFloat(str);
+        // }
         ptr.$text = str;
       }
     });
@@ -59,8 +57,7 @@ export class ProductParser extends SaxStream {
         this.counter++;
 
         if (this.block.product) {
-          this.emit('product', this.block.product);
-
+          this.emit(ProductEvents.PRODUCT, this.block.product);
         }
         
         this.arr = null;

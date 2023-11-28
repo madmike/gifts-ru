@@ -1,16 +1,17 @@
-import { lastValueFrom } from 'rxjs';
-import { finished } from 'stream/promises';
+import { lastValueFrom } from "rxjs";
+import { finished } from "stream/promises";
 
 import { HttpService } from "@nestjs/axios";
 import { Injectable, Logger } from "@nestjs/common";
 
-import { StoreService } from './store.service';
-import { Item } from '../models/item.model';
-import { PhotosService } from './photos.service';
-import { ProductParser } from '../classes/products-parser.class';
-import { EVENTS } from '../enums/events.enum';
-import { ProductEvents } from '../enums/product-events.enum';
-import { CategoryParser } from '../classes/category-parser.class';
+import { StoreService } from "./store.service";
+import { Item } from "../models/item.model";
+import { PhotosService } from "./photos.service";
+import { ProductParser } from "../classes/products-parser.class";
+import { SaxEvents } from "../enums/events.enum";
+import { ProductEvents } from "../enums/product-events.enum";
+import { CategoryParser } from "../classes/category-parser.class";
+import { StockParser } from "../classes/stock-parser.class";
 
 @Injectable()
 export class DownloadService {
@@ -18,6 +19,7 @@ export class DownloadService {
 
   private productParser = new ProductParser();
   private categoryParser = new CategoryParser();
+  private stocksParser = new StockParser();
 
   constructor(
     private readonly http: HttpService,
@@ -29,21 +31,16 @@ export class DownloadService {
       this.store.addItem(data);
     }));
 
-    this.productParser.on(EVENTS.FINISH, async () => {
-      this.logger.log('Finished downloading products...');
-      await this.store.storeItems();
-    });
-
     this.categoryParser.on(ProductEvents.CATEGORY, (async (category) => {
-      await this.store.addCategory(category);
+      this.store.addCategory(category);
     }));
 
     this.categoryParser.on(ProductEvents.PRODUCT_CATEGORY, ( async (data) => {
-      await this.store.setItemCategory(data)
+      this.store.setItemCategory(data)
     }));
 
-    this.categoryParser.on(EVENTS.FINISH, (async (categories) => {
-      this.logger.log('Finished downloading categories...');
+    this.stocksParser.on(ProductEvents.STOCK, (async (data) => {
+      this.store.addItemStocks(data);
     }));
   }
 
@@ -54,7 +51,12 @@ export class DownloadService {
     this.logger.log('Start downloading categories', url);
 
     lastValueFrom(this.http.get(url, { responseType: 'stream' })).then( res => res.data.pipe(this.categoryParser) );
-    return finished(this.categoryParser);
+    return new Promise<void>(resolve => {
+      this.categoryParser.on(SaxEvents.FINISH, (() => {
+        this.logger.log('Finished downloading categories...');
+        resolve();
+      }));
+    })
   }
 
   async getProducts() {
@@ -64,7 +66,33 @@ export class DownloadService {
     this.logger.log('Start downloading products', url);
 
     lastValueFrom(this.http.get(url, { responseType: 'stream'})).then( res => res.data.pipe(this.productParser) );
-    return finished(this.productParser);
+    
+    return new Promise<void>(resolve => {
+      this.productParser.on(SaxEvents.FINISH, async () => {
+        this.store.addItem().then(()=> {
+          this.logger.log('Finished downloading products...');
+          resolve();
+        });
+      });
+    });
+  }
+
+  async getStocks() {
+    const baseUrl = `${process.env.GIFTS_PROTOCOL}://${process.env.GIFTS_USERNAME}:${process.env.GIFTS_PASSWORD}@${process.env.GIFTS_URL}/${process.env.GIFTS_EXPORT}`;
+    const url = `${baseUrl}/${process.env.GIFTS_STOCKS_PATH}`;
+
+    this.logger.log('Start downloading stocks', url);
+
+    lastValueFrom(this.http.get(url, { responseType: 'stream'})).then( res => res.data.pipe(this.stocksParser) );
+    
+    return new Promise<void>(resolve => {
+      this.stocksParser.on(SaxEvents.FINISH, (async () => {
+        this.store.addItem().then(() => {
+          this.logger.log('Finished downloading stocks...');
+          resolve();
+        });
+      }));
+    });
   }
 
   async getPhotos() {

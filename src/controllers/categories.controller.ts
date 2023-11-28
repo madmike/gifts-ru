@@ -17,20 +17,11 @@ export class CategoriesController {
     return this.createTree(category._id);
   }
 
+
+
   private async createTree(id: any = null) {
-    const categories = await Category.find();
-
-    const tree = {};
-    for (let category of categories) {
-      tree[category._id] ||= {};
-      tree[category._id] = { ...tree[category._id], ...category.toObject() };
-
-      if (category.parent) {
-        tree[category.parent] ||= {};
-        tree[category.parent].children ||= [];
-        tree[category.parent].children.push(tree[category._id]);
-      }
-    }
+    //@ts-expect-error
+    const tree = await Category.generateTreeMap();
 
     if (id) {
       return tree[id];
