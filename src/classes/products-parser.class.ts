@@ -1,5 +1,5 @@
-import { ProductEvents } from "src/enums/product-events.enum";
-import { SaxStream } from "./sax-stream";
+import { ProductEvents } from 'src/enums/product-events.enum';
+import { SaxStream } from './sax-stream';
 
 export class ProductParser extends SaxStream {
   private block: any = {};
@@ -15,28 +15,28 @@ export class ProductParser extends SaxStream {
       }
 
       const cur = {};
-      const ptr = this.arr[this.arr.length-1];
+      const ptr = this.arr[this.arr.length - 1];
       if (name in ptr) {
         if (!Array.isArray(ptr[name])) {
           ptr[name] = [ptr[name]];
         }
-        ptr[name].push(cur)
-        this.arr.push(ptr[name][ptr[name].length - 1])
+        ptr[name].push(cur);
+        this.arr.push(ptr[name][ptr[name].length - 1]);
       } else {
         ptr[name] = cur;
         this.arr.push(ptr[name]);
       }
 
       if (attrs) {
-        for (let i of Object.entries(attrs)) {
+        for (const i of Object.entries(attrs)) {
           cur[`$${i[0]}`] = i[1];
         }
       }
     });
 
-    this.on('text', data => {
-      const ptr = this.arr[this.arr.length-1];
-      let str = data.trim();
+    this.on('text', (data) => {
+      const ptr = this.arr[this.arr.length - 1];
+      const str = data.trim();
 
       if (str) {
         // if (/^[\d.]+$/.test(str)) {
@@ -59,7 +59,7 @@ export class ProductParser extends SaxStream {
         if (this.block.product) {
           this.emit(ProductEvents.PRODUCT, this.block.product);
         }
-        
+
         this.arr = null;
         this.block = null;
 

@@ -4,4 +4,4 @@ export enum SaxState {
   INSTRUCTION = 2,
   IGNORE_COMMENT = 4,
   CDATA = 8,
-};
+}

@@ -1,10 +1,11 @@
-import { Mutex } from "async-mutex";
-import { ObjectId } from "bson";
-import { Injectable, Logger } from "@nestjs/common";
+import { Mutex } from 'async-mutex';
+import { ObjectId } from 'mongoose';
+import { Injectable, Logger } from '@nestjs/common';
 
-import { Item } from "../models/item.model";
-import { Category } from "../models/category.model";
-import { MapperService } from "./mapper.service";
+import { Category } from '../models/category.model';
+import { MapperService } from './mapper.service';
+import { Product } from 'src/models/product.model';
+import { Variant } from 'src/models/variant.model';
 
 const RING_SIZE = 1000;
 
@@ -12,52 +13,68 @@ const RING_SIZE = 1000;
 export class StoreService {
   private readonly logger = new Logger(StoreService.name);
 
-  private items: any[] = [];
+  private products: any[] = [];
+  private variants: any[] = [];
 
-  private itemCateogries = {};
+  private productCateogries = {};
   private categories = {};
   private mutex = new Mutex();
 
-  constructor(
-    private readonly mapper: MapperService,
-  ) {}
+  constructor(private readonly mapper: MapperService) {}
 
-  async addItem(data: any = null) {
+  async addProduct(data: any = null): Promise<void> {
     return this.mutex.runExclusive(() => {
       if (data) {
-        const item = this.mapper.transform(data);
-        this.items.push({
+        //размер|на рост|лет|года|см|XXS|XS|S|M|L|XL|2XL|3XL|4XL|5XL
+        const { product, variants } = this.mapper.transform(data);
+        this.products.push({
           updateOne: {
-            filter: { pid: item.pid },
-            update: { $set: item },
+            filter: { pid: product.pid },
+            update: { $set: product },
             upsert: true,
-          }
+          },
         });
+
+        variants?.forEach((variant) =>
+          this.variants.push({
+            updateOne: {
+              filter: { pid: variant.pid },
+              update: { $set: variant },
+              upsert: true,
+            },
+          }),
+        );
       }
 
-      if (!data || this.items.length === RING_SIZE) {
-        return this.storeItems();
-      } else {
-        return Promise.resolve();
+      if (!data) {
+        return this.storeProducts().then(() => this.storeVariants());
       }
-    });
+
+      if (this.products.length >= RING_SIZE) {
+        return this.storeProducts();
+      }
+      if (this.variants.length >= RING_SIZE) {
+        return this.storeVariants();
+      }
+
+      return Promise.resolve();
+    }) as Promise<void>;
   }
 
-  async addItemStocks(data: any) {
+  async addProductStocks(data: any) {
     await this.mutex.runExclusive(async () => {
       if (data) {
-        const item = this.mapper.transformStocks(data);
-        this.items.push({
+        const product = this.mapper.transformStocks(data);
+        this.products.push({
           updateOne: {
-            filter: { pid: item.pid },
-            update: { $set: { stocks: item.stocks } },
-            upsert: true,
-          }
+            filter: { pid: product.pid },
+            update: { $set: { stocks: product.stocks } },
+          },
         });
       }
 
-      if (this.items.length === RING_SIZE) {
-        return this.storeItems();
+      if (this.products.length >= RING_SIZE) {
+        return this.storeVariants();
       } else {
         return Promise.resolve();
       }
@@ -65,31 +82,41 @@ export class StoreService {
   }
 
   async createCategories(data: any[], parent: ObjectId = null) {
-    return Promise.all(data.map( _category => {
-      return Category.findOneAndUpdate({cid: _category.id}, {
-        ...(parent ? { parent } : {}),
-        cid: _category.id,
-        name: _category.name,
-        slug: _category.uri,
-      }, { upsert: true, new: true}).then( category => {
-        if (_category.children) {
-          return this.createCategories(_category.children, category._id);
-        }
-      })
-    } ));
+    return Promise.all(
+      data.map((_category) => {
+        return Category.findOneAndUpdate(
+          { cid: _category.id },
+          {
+            ...(parent ? { parent } : {}),
+            cid: _category.id,
+            name: _category.name,
+            slug: _category.uri,
+          },
+          { upsert: true, new: true },
+        ).then((category) => {
+          if (_category.children) {
+            return this.createCategories(_category.children, category._id);
+          }
+        });
+      }),
+    );
   }
 
   async addCategory(cat: any) {
-    return Category.findOneAndUpdate({
-      cid: parseInt(cat.page_id)
-    }, {
-      cid: parseInt(cat.page_id),
-      name: cat.name,
-      slug: cat.uri
-    }, {
-      upsert: true,
-      new: true
-    }).then( async (category) => {
+    return Category.findOneAndUpdate(
+      {
+        cid: parseInt(cat.page_id),
+      },
+      {
+        cid: parseInt(cat.page_id),
+        name: cat.name,
+        slug: cat.uri,
+      },
+      {
+        upsert: true,
+        new: true,
+      },
+    ).then(async (category) => {
       if (cat.parent_id) {
         this.categories[cat.parent_id] ||= [];
         this.categories[cat.parent_id].push(category._id);
@@ -102,40 +129,58 @@ export class StoreService {
         );
       }
 
-      if (cat.page_id in this.itemCateogries) {
-        try{
+      if (cat.page_id in this.productCateogries) {
+        try {
           await this.mutex.runExclusive(async () => {
-            return Item.collection.bulkWrite([...this.itemCateogries[cat.page_id]].map( it => ({
-              updateOne: {
-                filter: { pid: parseInt(it) },
-                update: { $set: { pid: parseInt(it), category: category._id } },
-                upsert: true
-              }
-            }))).then( () => delete this.itemCateogries[cat.id] );
+            return Product.collection
+              .bulkWrite(
+                [...this.productCateogries[cat.page_id]].map((it) => ({
+                  updateOne: {
+                    filter: { pid: parseInt(it) },
+                    update: {
+                      $set: { pid: parseInt(it), category: category._id },
+                    },
+                    upsert: true,
+                  },
+                })),
+              )
+              .then(() => delete this.productCateogries[cat.id]);
           });
-        } catch(error) {
-          this.logger.error('ERROR HERE', error)
+        } catch (error) {
+          this.logger.error('ERROR HERE', error);
         }
       }
     });
   }
 
-  async setItemCategory(item: any) {
-    this.itemCateogries[item.cid] ||= new Set();
-    this.itemCateogries[item.cid].add(item.pid);
+  async setProductCategory(product: any) {
+    this.productCateogries[product.cid] ||= new Set();
+    this.productCateogries[product.cid].add(product.pid);
   }
 
   // --------------------------
 
-  private async storeItems() {
-    if (!this.items.length) {
+  private async storeProducts() {
+    if (!this.products.length) {
       return Promise.resolve();
     }
 
-    return Item.collection.bulkWrite(this.items).then( r => {
-      this.items.length = 0;
+    return Product.collection.bulkWrite(this.products).then((r) => {
+      this.products.length = 0;
       global.gc && global.gc();
       return r;
-    } );
+    });
+  }
+
+  private async storeVariants() {
+    if (!this.variants.length) {
+      return Promise.resolve();
+    }
+
+    return Variant.collection.bulkWrite(this.variants).then((r) => {
+      this.variants.length = 0;
+      global.gc && global.gc();
+      return r;
+    });
   }
 }

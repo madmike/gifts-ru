@@ -3,4 +3,4 @@ export enum SaxTag {
   OPENING = 1,
   CLOSING = 2,
   SELF_CLOSING = 3,
-};
+}

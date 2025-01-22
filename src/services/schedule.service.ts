@@ -1,11 +1,9 @@
-import { setTimeout } from "timers/promises";
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
 
-import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
-import { Cron } from "@nestjs/schedule";
-
-import { Item } from "../models/item.model";
-import { Category } from "../models/category.model";
-import { DownloadService } from "./download.service";
+import { Category } from '../models/category.model';
+import { Product } from '../models/product.model';
+import { DownloadService } from './download.service';
 
 @Injectable()
 export class ScheduleService implements OnModuleInit {
@@ -13,14 +11,12 @@ export class ScheduleService implements OnModuleInit {
 
   private active = false;
 
-  constructor(
-    private readonly download: DownloadService,
-  ) {}
+  constructor(private readonly download: DownloadService) {}
 
   async onModuleInit() {
-    if ((await Item.count()) === 0 || (await Category.count()) === 0) {
-      this.handleCron(); 
-    }
+    //if ((await Product.count()) === 0 || (await Category.count()) === 0) {
+    this.handleCron();
+    //}
   }
 
   @Cron('0 0 2 * * *')
@@ -33,7 +29,7 @@ export class ScheduleService implements OnModuleInit {
     await this.download.getCategories();
     await this.download.getProducts();
     await this.download.getStocks();
-    await this.download.getPhotos();
+    // await this.download.getPhotos();
     this.active = false;
   }
 }

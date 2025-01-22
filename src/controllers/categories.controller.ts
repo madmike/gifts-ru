@@ -1,5 +1,5 @@
-import { Controller, Get, Param } from "@nestjs/common";
-import { Category } from "../models/category.model";
+import { Controller, Get, Param } from '@nestjs/common';
+import { Category } from '../models/category.model';
 
 @Controller()
 export class CategoriesController {
@@ -13,19 +13,19 @@ export class CategoriesController {
   @Get('categories/:id')
   async getCategory(@Param('id') id: string) {
     const param = /^[a-f\d]{24}$/i.test(id) ? '_id' : 'slug';
-    const category = await Category.findOne({[param]: id});
+    const category = await Category.findOne({ [param]: id });
     return this.createTree(category._id);
   }
 
   private async createTree(id: any = null) {
-    //@ts-expect-error
+    //@ts-expect-error fuck typescript
     const tree = await Category.generateTreeMap();
 
     if (id) {
       return tree[id];
-    } 
+    }
 
-    for (let cat in tree) {
+    for (const cat in tree) {
       if (tree[cat].parent) {
         delete tree[cat];
       }

@@ -1,6 +1,6 @@
-import { ProductEvents } from "../enums/product-events.enum";
+import { ProductEvents } from '../enums/product-events.enum';
 
-import { SaxStream } from "./sax-stream";
+import { SaxStream } from './sax-stream';
 
 export class StockParser extends SaxStream {
   private process = false;
@@ -10,7 +10,7 @@ export class StockParser extends SaxStream {
   constructor() {
     super();
 
-    this.on('opentag', (name: string, attrs) => {
+    this.on('opentag', (name: string) => {
       if (name === 'doct') {
         return;
       }
@@ -23,7 +23,7 @@ export class StockParser extends SaxStream {
       this.tag = name;
     });
 
-    this.on('text', data => {
+    this.on('text', (data) => {
       this.block[this.tag] = data.trim();
     });
 
