@@ -1,34 +1,25 @@
-FROM node:21-alpine as builder
+# Ensure pnpm installs all dependencies, including devDependencies
+FROM node:20-slim AS base
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
 
-ENV NODE_ENV build
-
-RUN mkdir -p /app
-RUN chown node /app
-
-USER node
+RUN corepack enable
 WORKDIR /app
+COPY package.json pnpm-lock.yaml ./
 
-COPY package*.json ./
-RUN npm ci
+# Install all dependencies (including devDependencies)
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 
-COPY --chown=node:node . .
-RUN npm run build \
-    && npm prune --production
+# Build the app
+FROM base AS build
+COPY . ./
+RUN pnpm run build
 
-# ---
-
-FROM node:21-alpine
-
-ENV NODE_ENV production
-
-RUN mkdir -p /app
-RUN chown node /app
-
-USER node
+# Final image with necessary files for production
+FROM node:20-slim AS final
 WORKDIR /app
-
-COPY --from=builder --chown=node:node /app/package*.json ./
-COPY --from=builder --chown=node:node /app/node_modules/ ./node_modules/
-COPY --from=builder --chown=node:node /app/dist/ ./dist/
+COPY --from=build /app/node_modules /app/node_modules
+COPY --from=build /app/dist /app/dist
+EXPOSE 8000
 
 CMD ["node", "dist/main.js"]

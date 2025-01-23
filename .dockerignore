@@ -3,18 +3,31 @@
 .gitignore
 .dockerignore
 
-# Build dependencies
+# Build artifacts
 dist
-public
-node_modules
 coverage
+public
 
-# Environment (contains sensitive data)
+# Node.js dependencies (will be handled in the image itself)
+node_modules
+
+# Environment files (may contain sensitive data)
 .env
 
-# Files not required for production
+# Editor and config files (not needed in production)
 .editorconfig
-Dockerfile
-README.md
+.eslintignore
+.eslintrc.js
+.prettierignore
+.prettierrc
 tslint.json
 nodemon.json
+
+# Documentation and misc files
+README.md
+Dockerfile
+
+# Tests and temporary files
+*.log
+*.tmp
+*.swp
