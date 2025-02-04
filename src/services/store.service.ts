@@ -95,7 +95,10 @@ export class StoreService {
           { upsert: true, new: true },
         ).then((category) => {
           if (_category.children) {
-            return this.createCategories(_category.children, category._id);
+            return this.createCategories(
+              _category.children,
+              category._id as ObjectId,
+            );
           }
         });
       }),

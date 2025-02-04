@@ -1,5 +1,5 @@
 # Ensure pnpm installs all dependencies, including devDependencies
-FROM node:20-slim AS base
+FROM node:slim AS base
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 

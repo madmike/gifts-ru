@@ -17,7 +17,7 @@ export class ProductsController {
   async getProductsForCategory(@Param('cat_id') cat_id: string, @Query() q) {
     const param = /^[a-f\d]{24}$/i.test(cat_id) ? '_id' : 'slug';
     const cat = await Category.findOne({ [param]: cat_id });
-    const catIds = await cat.getDescedants();
+    const catIds = await cat.getDescendants();
     const { where, options } = this.getQuery(q);
 
     if (cat) {

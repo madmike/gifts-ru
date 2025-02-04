@@ -14,9 +14,9 @@ export class ScheduleService implements OnModuleInit {
   constructor(private readonly download: DownloadService) {}
 
   async onModuleInit() {
-    //if ((await Product.count()) === 0 || (await Category.count()) === 0) {
-    this.handleCron();
-    //}
+    if ((await Product.count()) === 0 || (await Category.count()) === 0) {
+      this.handleCron();
+    }
   }
 
   @Cron('0 0 2 * * *')
@@ -29,7 +29,7 @@ export class ScheduleService implements OnModuleInit {
     await this.download.getCategories();
     await this.download.getProducts();
     await this.download.getStocks();
-    // await this.download.getPhotos();
+    await this.download.getPhotos();
     this.active = false;
   }
 }
