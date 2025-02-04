@@ -107,7 +107,7 @@ export class MapperService {
 
   private transformPhoto(data: any) {
     return data.meaning.$text === '1'
-      ? data.image?.$text?.replace(/thumbnails\/(.+?)_1000x1000.jpg/, '$1')
+      ? data.image?.$text?.replace(/(.+?)_1000x1000.jpg/, '$1')
       : null;
   }
 }

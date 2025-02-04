@@ -82,7 +82,7 @@ export class PhotosService {
     }
 
     const baseUrl = `${process.env.GIFTS_PROTOCOL}://${process.env.GIFTS_USERNAME}:${process.env.GIFTS_PASSWORD}@${process.env.GIFTS_URL}/${process.env.GIFTS_EXPORT}`;
-    const url = `${baseUrl}/thumbnails/${product}_1000x1000.jpg`;
+    const url = `${baseUrl}/${product}_1000x1000.jpg`;
 
     const file = `public/${product}.jpg`;
     if (await fs.exists(file)) {
